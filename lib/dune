@@ -1,0 +1,7 @@
+(library
+ (name nostr_relay)
+ (libraries dream yojson digestif.c postgresql lwt lwt.unix unix)
+ (foreign_stubs
+  (language c)
+  (names schnorr_stubs))
+ (c_library_flags (-lsecp256k1)))

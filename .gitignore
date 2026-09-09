@@ -1,0 +1,11 @@
+_build/
+*.install
+*.exe
+*.log
+.DS_Store
+.claude/
+.codex/
+.crush*
+.aider*
+kustomize/
+update.sh

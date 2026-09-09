@@ -1,0 +1,3 @@
+(executable
+ (name main)
+ (libraries nostr_relay dream yojson lwt))
