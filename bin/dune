@@ -1,3 +1,4 @@
 (executable
  (name main)
- (libraries nostr_relay dream yojson lwt))
+ (libraries nostr_relay cohttp-lwt-unix websocket-lwt-unix websocket-lwt-unix.cohttp
+   yojson lwt lwt.unix))

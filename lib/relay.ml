@@ -2,8 +2,9 @@ open Lwt.Infix
 
 type t = {
   id : int;
-  ws : Dream.websocket;
   ip : string;
+  push : string -> unit;  (** queues a text frame for the client *)
+  shutdown : unit -> unit;  (** closes the connection *)
   challenge : string;
   relay_url : string;
   mutable authed : string list;  (** NIP-42 authenticated pubkeys *)
@@ -13,13 +14,14 @@ type t = {
 let connections : (int, t) Hashtbl.t = Hashtbl.create 16
 let last_id = ref 0
 
-let create ~ws ~ip ~relay_url =
+let create ~ip ~relay_url ~push ~shutdown =
   incr last_id;
   let conn =
     {
       id = !last_id;
-      ws;
       ip;
+      push;
+      shutdown;
       challenge = Util.random_hex 32;
       relay_url;
       authed = [];
@@ -32,9 +34,8 @@ let create ~ws ~ip ~relay_url =
 let close conn = Hashtbl.remove connections conn.id
 
 let send conn json =
-  Lwt.catch
-    (fun () -> Dream.send conn.ws (Yojson.Safe.to_string json))
-    (fun _ -> Lwt.return_unit)
+  (try conn.push (Yojson.Safe.to_string json) with _ -> ());
+  Lwt.return_unit
 
 let ok conn id accepted message =
   send conn (`List [ `String "OK"; `String id; `Bool accepted; `String message ])
@@ -99,7 +100,7 @@ let do_event conn (ev : Event.t) =
     Lwt.catch
       (fun () -> store ev >>= fun () -> ok conn ev.id true "" >>= fun () -> broadcast ev)
       (fun exn ->
-        Dream.error (fun log -> log "failed to store event: %s" (Printexc.to_string exn));
+        Log.error "failed to store event: %s" (Printexc.to_string exn);
         ok conn ev.id false "error: failed to store event")
 
 let do_req conn sub filters =
@@ -112,7 +113,7 @@ let do_req conn sub filters =
              >>= Lwt_list.iter_s (fun ev -> send_event conn sub ev))
       >>= fun () -> eose conn sub)
     (fun exn ->
-      Dream.error (fun log -> log "failed to query events: %s" (Printexc.to_string exn));
+      Log.error "failed to query events: %s" (Printexc.to_string exn);
       Hashtbl.remove conn.subs sub;
       closed conn sub "error: could not query events")
 
@@ -126,7 +127,7 @@ let do_count conn sub filters =
       >>= fun total ->
       send conn (`List [ `String "COUNT"; `String sub; `Assoc [ ("count", `Int total) ] ]))
     (fun exn ->
-      Dream.error (fun log -> log "failed to count events: %s" (Printexc.to_string exn));
+      Log.error "failed to count events: %s" (Printexc.to_string exn);
       closed conn sub "error: could not count events")
 
 let normalize_relay_url url =

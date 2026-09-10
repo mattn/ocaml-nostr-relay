@@ -1,6 +1,6 @@
 # OCaml Nostr Relay
 
-A Nostr relay server written in OCaml, built on [Dream](https://aantron.github.io/dream/)
+A Nostr relay server written in OCaml, built on cohttp and websocket-lwt-unix
 for HTTP/WebSocket and PostgreSQL for storage.
 
 ## NIP Support
