@@ -5,11 +5,13 @@ type t = {
   tags : (string * string list) list;  (** tag name without the leading '#' *)
   since : int option;
   until : int option;
+  search : string option;  (** NIP-50 *)
   limit : int option;
 }
 
 let empty =
-  { ids = None; authors = None; kinds = None; tags = []; since = None; until = None; limit = None }
+  { ids = None; authors = None; kinds = None; tags = []; since = None; until = None;
+    search = None; limit = None }
 
 let string_list name (json : Yojson.Safe.t) =
   match json with
@@ -32,6 +34,7 @@ let of_json (json : Yojson.Safe.t) : t =
           | "kinds" -> { filter with kinds = Some (int_list name value) }
           | "since" -> { filter with since = Some (Event.as_int name value) }
           | "until" -> { filter with until = Some (Event.as_int name value) }
+          | "search" -> { filter with search = Some (Event.as_string name value) }
           | "limit" -> { filter with limit = Some (Event.as_int name value) }
           | _ when String.length name >= 2 && name.[0] = '#' ->
               let key = String.sub name 1 (String.length name - 1) in
@@ -54,6 +57,12 @@ let matches (ev : Event.t) (filter : t) =
   && (match filter.kinds with None -> true | Some kinds -> List.mem ev.kind kinds)
   && (match filter.since with None -> true | Some since -> ev.created_at >= since)
   && (match filter.until with None -> true | Some until -> ev.created_at <= until)
+  && (match filter.search with
+     | None -> true
+     | Some search ->
+         List.for_all
+           (fun word -> Util.contains_ignore_ascii_case ~needle:word ev.content)
+           (Util.search_words search))
   && List.for_all
        (fun (name, values) ->
          List.exists (fun value -> List.mem value values) (Event.tag_values ev name))

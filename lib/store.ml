@@ -64,6 +64,11 @@ let schema =
     "CREATE INDEX IF NOT EXISTS kindidx ON event (kind)";
     "CREATE INDEX IF NOT EXISTS kindtimeidx ON event(kind,created_at DESC)";
     "CREATE INDEX IF NOT EXISTS arbitrarytagvalues ON event USING gin (tagvalues)";
+    (* NIP-50: search is a substring match, so a trigram index keeps the leading
+       wildcard off a sequential scan. Terms shorter than 3 characters produce no
+       trigrams and still fall back to a scan. *)
+    "CREATE EXTENSION IF NOT EXISTS pg_trgm";
+    "CREATE INDEX IF NOT EXISTS contenttrgmidx ON event USING gin (content gin_trgm_ops)";
   ]
 
 let init () = Lwt_list.iter_s (fun sql -> exec sql >|= ignore) schema
@@ -179,6 +184,14 @@ let build_where (filter : Filter.t) ~authed =
   (match filter.until with
   | None -> ()
   | Some until -> add ("created_at <= " ^ string_of_int until));
+  (* NIP-50: every word of the search string must occur in the content. *)
+  (match filter.search with
+  | None -> ()
+  | Some search ->
+      List.iter
+        (fun word ->
+          add ("content ILIKE " ^ param ("%" ^ Util.escape_like word ^ "%") ^ " ESCAPE '\\'"))
+        (Util.search_words search));
   List.iter
     (fun (name, values) ->
       if values = [] then add "false"
