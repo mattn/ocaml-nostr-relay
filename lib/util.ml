@@ -45,3 +45,48 @@ let getenv ?(default = "") name =
   match Sys.getenv_opt name with Some v when v <> "" -> v | _ -> default
 
 let has_prefix ~prefix s = String.starts_with ~prefix s
+
+(* NIP-50: split a search string into whitespace separated words. An event
+   matches when every word occurs in its content, which is what both the SQL
+   query and Filter.matches check, so stored and live results agree. *)
+let search_words (search : string) : string list =
+  let words = ref [] and buf = Buffer.create 16 in
+  let flush () =
+    if Buffer.length buf > 0 then begin
+      words := Buffer.contents buf :: !words;
+      Buffer.clear buf
+    end
+  in
+  String.iter
+    (fun c -> match c with ' ' | '\t' | '\n' | '\r' -> flush () | _ -> Buffer.add_char buf c)
+    search;
+  flush ();
+  List.rev !words
+
+(* Escape the LIKE wildcards so a search for "%" cannot match everything. *)
+let escape_like (word : string) : string =
+  let buf = Buffer.create (String.length word) in
+  String.iter
+    (fun c ->
+      (match c with '\\' | '%' | '_' -> Buffer.add_char buf '\\' | _ -> ());
+      Buffer.add_char buf c)
+    word;
+  Buffer.contents buf
+
+(* ASCII lowercase; the non-ASCII bytes that most searches are made of are
+   left alone. *)
+let lowercase_ascii = String.lowercase_ascii
+
+let contains_ignore_ascii_case ~(needle : string) (haystack : string) : bool =
+  let needle = lowercase_ascii needle and haystack = lowercase_ascii haystack in
+  let n = String.length needle and h = String.length haystack in
+  if n = 0 then true
+  else if n > h then false
+  else begin
+    let found = ref false and i = ref 0 in
+    while (not !found) && !i <= h - n do
+      if String.sub haystack !i n = needle then found := true;
+      incr i
+    done;
+    !found
+  end
