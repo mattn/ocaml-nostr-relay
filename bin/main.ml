@@ -72,6 +72,17 @@ let websocket request =
       ~shutdown:(fun () -> frames_out None)
   in
   Log.info "[%s] client connected" ip;
+  (* Keep idle connections alive behind proxies such as Cloudflare Tunnel,
+     which drop websockets after 100 seconds without traffic. *)
+  let rec keepalive () =
+    Lwt_unix.sleep 30. >>= fun () ->
+    if !ended then Lwt.return_unit
+    else begin
+      (try frames_out (Some (Frame.create ~opcode:Frame.Opcode.Ping ())) with _ -> ());
+      keepalive ()
+    end
+  in
+  Lwt.async keepalive;
   (* The library lets read errors escape the connection handler, so wrap it to
      learn about resets and half closed sockets and end the message stream. *)
   let response_action =
