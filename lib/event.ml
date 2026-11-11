@@ -151,6 +151,30 @@ let is_expired (ev : t) =
       match int_of_string_opt value with Some at -> at <= Util.now () | None -> false)
   | None -> false
 
+(* NIP-13: difficulty is the number of leading zero bits of the event id.
+   Only the id is checked; whether a nonce tag commits to the same target is
+   the publishing client's business. *)
+let pow_difficulty (id : string) =
+  let len = String.length id in
+  let rec loop i bits =
+    if i >= len then bits
+    else
+      let n = Util.hex_value id.[i] in
+      if n < 0 then bits
+      else if n = 0 then loop (i + 1) (bits + 4)
+      else if n <= 1 then bits + 3
+      else if n <= 3 then bits + 2
+      else if n <= 7 then bits + 1
+      else bits
+  in
+  loop 0 0
+
+(* NIP-13: minimum proof of work demanded of incoming events; 0 disables it *)
+let min_pow_difficulty =
+  match int_of_string_opt (String.trim (Util.getenv ~default:"0" "MIN_POW_DIFFICULTY")) with
+  | Some n -> n
+  | None -> 0
+
 let is_ephemeral (ev : t) = ev.kind >= 20000 && ev.kind < 30000
 let is_replaceable (ev : t) = ev.kind = 0 || ev.kind = 3 || (ev.kind >= 10000 && ev.kind < 20000)
 let is_addressable (ev : t) = ev.kind >= 30000 && ev.kind < 40000

@@ -9,6 +9,7 @@ for HTTP/WebSocket and PostgreSQL for storage.
 - **NIP-04**: Encrypted direct messages
 - **NIP-09**: Event deletion
 - **NIP-11**: Relay information document
+- **NIP-13**: Proof of work
 - **NIP-17**: Private direct messages
 - **NIP-26**: Delegated event signing
 - **NIP-40**: Expiration timestamp
@@ -47,6 +48,8 @@ docker run -p 9001:9001 -e DATABASE_URL='postgres://user:pass@host:5432/nostr' o
 
 - `DATABASE_URL`: PostgreSQL connection string, or `DB_HOST` / `DB_USER` / `DB_PASS` / `DB_NAME`
 - `PORT`: listen port (default `9001`)
+- `MIN_POW_DIFFICULTY`: minimum NIP-13 proof of work (leading zero bits of the event id) required
+  for incoming events (default `0`, disabled)
 - `RELAY_NAME`, `RELAY_DESCRIPTION`, `RELAY_URL`, `RELAY_PUBKEY`, `RELAY_CONTACT`, `RELAY_ICON`,
   `RELAY_COUNTRIES`: values served in the NIP-11 document
 

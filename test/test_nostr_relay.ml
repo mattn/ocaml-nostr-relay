@@ -69,6 +69,16 @@ let () =
     (Event.is_expired { event with tags = [ [ "expiration"; "1700000000" ] ] });
   check "expiration in the future is not expired"
     (not (Event.is_expired { event with tags = [ [ "expiration"; "4000000000" ] ] }));
+  (* NIP-13 *)
+  check "all zero id has full difficulty" (Event.pow_difficulty (String.make 64 '0') = 256);
+  check "0f has difficulty 4" (Event.pow_difficulty ("0f" ^ String.make 62 'f') = 4);
+  check "1f has difficulty 3" (Event.pow_difficulty "1f" = 3);
+  check "3f has difficulty 2" (Event.pow_difficulty "3f" = 2);
+  check "7f has difficulty 1" (Event.pow_difficulty "7f" = 1);
+  check "ff has difficulty 0" (Event.pow_difficulty "ff" = 0);
+  check "000000ab has difficulty 24" (Event.pow_difficulty "000000ab" = 24);
+  check "002f has difficulty 10" (Event.pow_difficulty "002f" = 10);
+  check "0001 has difficulty 15" (Event.pow_difficulty "0001" = 15);
   check "malformed messages are rejected"
     (match Event.of_json (Yojson.Safe.from_string {|{"id":1}|}) with
     | _ -> false

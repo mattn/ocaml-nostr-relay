@@ -1,7 +1,7 @@
 (* NIP-11: Relay Information Document *)
 
 let version = "0.0.2"
-let supported_nips = [ 1; 4; 9; 11; 17; 26; 40; 42; 45; 50; 59; 66; 70; 78 ]
+let supported_nips = [ 1; 4; 9; 11; 13; 17; 26; 40; 42; 45; 50; 59; 66; 70; 78 ]
 
 let countries () =
   Util.getenv ~default:"JP" "RELAY_COUNTRIES"
@@ -21,4 +21,5 @@ let document () : Yojson.Safe.t =
       ("software", `String "https://github.com/mattn/ocaml-nostr-relay");
       ("version", `String version);
       ("relay_countries", `List (List.map (fun c -> `String c) (countries ())));
+      ("limitation", `Assoc [ ("min_pow_difficulty", `Int Event.min_pow_difficulty) ]);
     ]

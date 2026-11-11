@@ -94,6 +94,12 @@ let do_event conn (ev : Event.t) =
   if not (Event.verify ev) then ok conn ev.id false "invalid: signature verification failed"
   else if not (Nip26.validate ev) then
     ok conn ev.id false "invalid: delegation verification failed"
+  else if
+    Event.min_pow_difficulty > 0 && Event.pow_difficulty ev.id < Event.min_pow_difficulty
+  then
+    ok conn ev.id false
+      (Printf.sprintf "pow: difficulty %d is less than %d" (Event.pow_difficulty ev.id)
+         Event.min_pow_difficulty)
   else if Event.is_protected ev && not (List.mem ev.pubkey conn.authed) then
     ok conn ev.id false "auth-required: this event may only be published by its author"
   else
