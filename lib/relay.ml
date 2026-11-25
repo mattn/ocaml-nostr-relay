@@ -102,6 +102,9 @@ let do_event conn (ev : Event.t) =
          Event.min_pow_difficulty)
   else if Event.is_protected ev && not (List.mem ev.pubkey conn.authed) then
     ok conn ev.id false "auth-required: this event may only be published by its author"
+  else if Event.is_expired ev then
+    (* NIP-40: an event that has already expired is not accepted *)
+    ok conn ev.id false "invalid: event has expired"
   else
     Lwt.catch
       (fun () -> store ev >>= fun () -> ok conn ev.id true "" >>= fun () -> broadcast ev)
